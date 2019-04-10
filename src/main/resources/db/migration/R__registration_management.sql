@@ -31,3 +31,40 @@ $action_log$ LANGUAGE plpgsql;
 
 CREATE TRIGGER add_log AFTER INSERT ON registration
     FOR EACH ROW EXECUTE PROCEDURE notifie_add();
+    
+    
+    
+CREATE OR REPLACE FUNCTION unregister_user_on_activity(userID bigint, activityID bigint) RETURNS void AS $$
+DECLARE
+    variable registration%rowtype;
+BEGIN
+    select * into variable
+    from registration 
+    where user_id = userID 
+    AND activity_id  = activityID;
+    if not found then
+         RAISE EXCEPTION 'registration_not_found';
+    else
+         DELETE FROM registration 
+         where user_id = userID 
+         AND activity_id  = activityID;
+    end if;
+END;
+
+$$ Language plpgsql;
+
+DROP TRIGGER IF EXISTS delete_log ON registration;
+CREATE OR REPLACE FUNCTION notifie_delete() RETURNS trigger AS $action_log$
+
+BEGIN
+    INSERT INTO action_log (id, action_name, entity_name, entity_id, author, action_date)
+    VALUES (nextval('id_generator'), 'delete', 'registration', OLD.id , 'postgres', NOW()); 
+    RETURN NULL;
+END;
+$action_log$ LANGUAGE plpgsql;
+
+CREATE TRIGGER delete_log AFTER DELETE ON registration
+    FOR EACH ROW EXECUTE PROCEDURE notifie_delete();
+
+
+    
